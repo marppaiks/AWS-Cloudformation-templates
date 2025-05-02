@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: 'Creates IAM resources for Elastic Beanstalk operation and user for Github integration: User: GitWorkflow, Roles: aws-elasticbeanstalk-service-role, ec2-beanstalk-role'
+
+Resources:
+  # Create IAM user named GitWorkflow for Github Actions compatibility
+  IAMUserGitWorkflow:
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Type: AWS::IAM::User
+    Properties:
+      Path: /
+      UserName: GitWorkflow
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/SecretsManagerReadWrite
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+        - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy
+      Policies:
+        - PolicyName: EBS_for_Github
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticbeanstalk:UpdateEnvironment
+                  - elasticbeanstalk:DescribeEnvironments
+                  - elasticbeanstalk:DescribeApplicationVersions
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: GitWorkflow
+        - Key: Purpose
+          Value: Access for Github Actions
+        - Key: Project
+          Value: ElliProject
+
+  # Service Role for Elastic Beanstalk
+  EBserviceRole:
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /service-role/
+      RoleName: aws-elasticbeanstalk-service-role
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: elasticbeanstalk.amazonaws.com
+
+  # EC2 Role for Elastic Beanstalk instances
+  ec2beanstalkrole:
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      RoleName: ec2-beanstalk-role
+      Description: Allows EC2 instances to call AWS services on your behalf.
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
+        - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkRoleWorkerTier
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: ec2.amazonaws.com
+
+  # Instance Profile for EC2 to use the above role
+  InstanceProfileEc2Beanstalk:
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      RoleName: ec2-beanstalk-role
+      Roles:
+        - Ref: ec2beanstalkrole
+
+Outputs:
+  EBserviceRoleArn:
+    Description: ARN of the Elastic Beanstalk service role
+    Value: !GetAtt EBserviceRole.Arn
+    Export:
+      Name: EBServiceRoleArn
+
+  ec2beanstalkroleArn:
+    Description: ARN of the EC2 instance role for Elastic Beanstalk
+    Value: !GetAtt ec2beanstalkrole.Arn
+    Export:
+      Name: EC2BeanstalkRoleArn
+
+  InstanceProfileEc2BeanstalkArn:
+    Description: ARN of the instance profile for EC2 Beanstalk
+    Value: !GetAtt InstanceProfileEc2Beanstalk.Arn
+    Export:
+      Name: EC2BeanstalkInstanceProfileArn

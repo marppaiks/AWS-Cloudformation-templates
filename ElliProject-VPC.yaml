@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: 'Creates VPC with 2 public subnets that are in their own AZs'
+
+Resources:
+  #Creating the VPC
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: yes
+      EnableDnsHostnames: yes
+      Tags:
+        - Key: Name
+          Value: ElliProject-VPC # <-- Change name
+  #Creating Internet Gateway
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: ElliProject-IGW # <-- Change name
+  #Attaching the ITG to the VPC
+  InternetGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  #Creating Public Subnet 1
+  PublicSubnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: eu-north-1a # <-- Change Region
+      CidrBlock: 10.0.0.0/24
+      MapPublicIpOnLaunch: yes
+      Tags:
+        - Key: Name
+          Value: ElliProject-Subnet-A # <-- Change name
+  #Creating Public Subnet 2
+  PublicSubnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: eu-north-1b # <-- Change Region
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: yes
+      Tags:
+        - Key: Name
+          Value: ElliProject-Subnet-B # <-- Change name
+  #Creating a Public Route Table
+  PublicRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: ElliProject-Routetable # <-- Change name
+  DefaultRoute:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  #Associating Subnet 1 and Route Table
+  PublicSubnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+  #Associating Subnet 2 and Route Table
+  PublicSubnet2RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+## Outputs for the usage of another stack to refer values
+Outputs:
+  VpcId:
+    Description: ID of the created VPC (ElliProject-VPC)
+    Value: !Ref VPC
+    Export:
+      Name: ElliProject-VPC # <-- Change name
+
+  PublicSubnet1Id:
+    Description: ID of the first public subnet (ElliProject-subnet-A)
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: ElliProject-Subnet-A # <-- Change name
+
+  PublicSubnet2Id:
+    Description: ID of the second public subnet (ElliProject-subnet-B)
+    Value: !Ref PublicSubnet2
+    Export:
+      Name: ElliProject-Subnet-B # <-- Change name
+############################# End of Networking configurations
