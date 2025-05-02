@@ -85,7 +85,7 @@ Resources:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: /
-      RoleName: ec2-beanstalk-role
+      InstanceProfileName: ec2-beanstalk-role
       Roles:
         - Ref: ec2beanstalkrole
 
